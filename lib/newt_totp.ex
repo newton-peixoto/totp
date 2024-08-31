@@ -2,24 +2,26 @@ defmodule NewtTotp do
   @duration 30
   @digit_count 6
 
-  # Test KEY "S4UQKKWHI6AN52OW3GEEG7I2W3VYM2M2"
-
   import Bitwise
 
+  @spec generate_secret() :: binary()
   def generate_secret do
-    :crypto.strong_rand_bytes(20)
+    :crypto.strong_rand_bytes(20) |> Base.encode32
   end
 
+  @spec generate_totp(binary()) :: binary()
   def generate_totp(key) do
     {:ok, key} = Base.decode32(key)
     key
-    |> hmac_sha1(calculate_T())
+    |> hmac(calculate_T())
     |> truncate()
   end
 
+  @spec valid?(binary(), any()) :: boolean()
   def valid?(secret, otp, since \\ nil),
     do: otp == generate_totp(secret) and not has_been_used?(since)
 
+  #RFC4226 https://datatracker.ietf.org/doc/html/rfc4226#section-5.4
   defp truncate(hash) do
     # getting the last byte and masking it so we get a valid index
     offset = :binary.last(hash) &&& 0x0F
@@ -40,7 +42,7 @@ defmodule NewtTotp do
     formatted_otp
   end
 
-  defp hmac_sha1(key, t) do
+  defp hmac(key, t) do
     :crypto.mac(:hmac, :sha, key, t)
   end
 
